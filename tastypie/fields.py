@@ -657,7 +657,9 @@ class RelatedField(ApiField):
         elif isinstance(value, six.string_types):
             # We got a URI. Load the object and assign it.
             return self.resource_from_uri(self.fk_resource, value, **kwargs)
-        elif hasattr(value, 'items'):
+        # elif hasattr(value, 'items'):
+        # sometimes, 'items' is used as attribute
+        elif isinstance(value, dict):
             # We've got a data dictionary.
             # Since this leads to creation, this is the only one of these
             # methods that might care about "parent" data.
