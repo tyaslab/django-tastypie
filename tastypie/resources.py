@@ -32,6 +32,8 @@ from tastypie.utils import is_valid_jsonp_callback_value, dict_strip_unicode_key
 from tastypie.utils.mime import determine_format, build_content_type
 from tastypie.validation import Validation
 
+import time
+
 # If ``csrf_exempt`` isn't present, stub it.
 try:
     from django.views.decorators.csrf import csrf_exempt
@@ -445,6 +447,11 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         Handles the common operations (allowed HTTP method, authentication,
         throttling, method lookup) surrounding most CRUD interactions.
         """
+
+        # Simulate the loading when developing in localhost
+        if getattr(settings, 'TASTYPIE_FULL_DEBUG', False) and getattr(settings, 'TASTYPIE_DELAY_SIMULATION', 0) > 0:
+            time.sleep(settings.TASTYPIE_DELAY_SIMULATION)
+
         allowed_methods = getattr(self._meta, "%s_allowed_methods" % request_type, None)
 
         if 'HTTP_X_HTTP_METHOD_OVERRIDE' in request.META:
