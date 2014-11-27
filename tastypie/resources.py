@@ -1246,7 +1246,8 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
 
         return response_class(content=serialized, content_type=build_content_type(desired_format))
 
-    def is_valid(self, bundle):
+    # archived
+    def old_is_valid(self, bundle):
         """
         Handles checking if the data provided by the user is valid.
 
@@ -1259,6 +1260,60 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         errors = self._meta.validation.is_valid(bundle, bundle.request)
 
         if errors:
+            bundle.errors[self._meta.resource_name] = errors
+            return False
+
+        return True
+
+
+    def is_valid(self, bundle):
+        """
+        On my way, validation should be performed one by one. And I call it 'validators' not 'validation'
+        """
+
+        validators = getattr(self._meta, 'validators', None)
+
+        if validators is None:
+            return self.old_is_valid(bundle) # FALLBACK
+
+        return self.validate_all(bundle)
+
+    def validate_all(self, bundle):
+        '''
+        #FIXME: Temporarily, cannot validate Relational Fields.
+        '''
+
+        relational_fields = []
+
+        for field in self.fields:
+            if isinstance(self.fields[field], RelatedField):
+                relational_fields.append(field)
+
+        if bundle.request.method == 'POST':
+            # if request method is POST (create new data), validate fields based on the validator keys
+            fields_to_validate = self._meta.validators.keys()
+        else:
+            # if request method is not POST (possibly PUT), validate fields based on bundle.data and validator keys
+            fields_to_validate = list(set(bundle.data.keys() and self._meta.validators.keys()))
+
+        #FIXME: Improve this validator so it can validate relational fields
+        fields_to_validate = [field for field in fields_to_validate if field not in relational_fields]
+
+        data = bundle.data.copy()
+        error_occurs = False
+        errors = {}
+        for field in fields_to_validate:
+            this_errors = []
+            for validator_class, validator_kwargs in self._meta.validators[field]:
+                try:
+                    validator_class(bundle, **validator_kwargs).validate(data[field])
+                except ValidationError as ve:
+                    if not error_occurs: error_occurs = True
+                    this_errors.append(ve.message)
+            if this_errors:
+                errors.update({field:this_errors})
+
+        if error_occurs:
             bundle.errors[self._meta.resource_name] = errors
             return False
 
