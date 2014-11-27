@@ -521,3 +521,19 @@ class MultiAuthentication(object):
             return request._authentication_backend.get_identifier(request)
         except AttributeError:
             return 'nouser'
+
+
+# is it useful???
+class UserAuthentication(Authentication):
+    def is_authenticated(self, request, **kwargs):
+        return request.user.is_authenticated()
+
+
+class StaffAuthentication(Authentication):
+    def is_authenticated(self, request, **kwargs):
+        return request.user.is_staff
+
+
+class SuperUserAuthentication(Authentication):
+    def is_authenticated(self, request, **kwargs):
+        return request.user.is_superuser
