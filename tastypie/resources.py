@@ -30,6 +30,7 @@ from tastypie.serializers import Serializer
 from tastypie.throttle import BaseThrottle
 from tastypie.utils import is_valid_jsonp_callback_value, dict_strip_unicode_keys, trailing_slash
 from tastypie.utils.mime import determine_format, build_content_type
+from tastypie.utils.queryset import fuzzy_filter
 from tastypie.validation import Validation
 
 import time
@@ -2043,7 +2044,18 @@ class BaseModelResource(Resource):
         The default simply applies the ``applicable_filters`` as ``**kwargs``,
         but should make it possible to do more advanced things.
         """
-        return self.get_object_list(request).filter(**applicable_filters)
+
+        object_list = self.get_object_list(request).filter(**applicable_filters)
+
+        # fuzzy filtering
+        # Howto: Set fuzzy_querystring and fuzzy_fields in Meta class
+
+        fuzzy_keyword = request.GET.get(getattr(self._meta, 'fuzzy_querystring', 'fuzzy'), None)
+        fuzzy_fields = getattr(self._meta, 'fuzzy_fields', [])
+        if fuzzy_keyword and fuzzy_fields:
+            object_list = fuzzy_filter(object_list, fuzzy_fields, fuzzy_keyword)
+
+        return object_list
 
     def get_object_list(self, request):
         """
