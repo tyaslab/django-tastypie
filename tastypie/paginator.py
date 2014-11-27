@@ -10,6 +10,8 @@ try:
 except ImportError:
     from urllib import urlencode
 
+import math
+
 
 class Paginator(object):
     """
@@ -107,6 +109,19 @@ class Paginator(object):
         if offset < 0:
             raise BadRequest("Invalid offset '%s' provided. Please provide a positive integer >= 0." % offset)
 
+        if 'page' in self.request_data:
+            page = int(self.request_data.get('page'))
+            limit = self.get_limit()
+            count = self.get_count()
+
+            if limit > 0:
+                max_page = math.ceil(self.get_count() / (self.get_limit() * 1.0))
+            else:
+                max_page = 1
+            
+            if page <= max_page:
+                offset = (page - 1) * self.get_limit()
+
         return offset
 
     def get_slice(self, limit, offset):
@@ -202,6 +217,19 @@ class Paginator(object):
         if limit:
             meta['previous'] = self.get_previous(limit, offset)
             meta['next'] = self.get_next(limit, offset, count)
+
+        # Added current_page and total_page
+        if limit > 0:
+            current_page = math.ceil(offset / (limit * 1.0)) + 1
+            total_page = math.ceil(count / (limit * 1.0))
+        else:
+            current_page = 1
+            total_page = 1
+
+        meta.update({
+            'current_page': current_page,
+            'total_page': total_page
+        })
 
         return {
             self.collection_name: objects,
