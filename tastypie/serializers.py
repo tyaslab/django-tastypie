@@ -106,10 +106,12 @@ class Serializer(object):
         if formats is not None:
             self.formats = formats
 
-        if self.formats is Serializer.formats and hasattr(settings, 'TASTYPIE_DEFAULT_FORMATS'):
+        tastypie_default_formats = getattr(settings, 'TASTYPIE_DEFAULT_FORMATS', ['json'])
+
+        if self.formats is Serializer.formats and tastypie_default_formats:
             # We want TASTYPIE_DEFAULT_FORMATS to override unmodified defaults but not intentational changes
             # on Serializer subclasses:
-            self.formats = settings.TASTYPIE_DEFAULT_FORMATS
+            self.formats = tastypie_default_formats
 
         if not isinstance(self.formats, (list, tuple)):
             raise ImproperlyConfigured('Formats should be a list or tuple, not %r' % self.formats)
