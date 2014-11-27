@@ -243,3 +243,344 @@ class DjangoAuthorization(Authorization):
             raise Unauthorized("You are not allowed to access that resource.")
 
         return True
+
+
+class CheckAuthorityMixin(object):
+    def check_authority(self, object_list, bundle):
+        return True
+
+    def check_list_authority(self, object_list, bundle):
+        return True
+
+    def check_detail_authority(self, object_list, bundle):
+        return True
+
+    def check_read_authority(self, object_list, bundle):
+        return True
+
+    def check_create_authority(self, object_list, bundle):
+        return True
+
+    def check_update_authority(self, object_list, bundle):
+        return True
+
+    def check_delete_authority(self, object_list, bundle):
+        return True
+
+    def check_read_list_authority(self, object_list, bundle):
+        return True
+
+    def check_read_detail_authority(self, object_list, bundle):
+        return True
+
+    def check_create_list_authority(self, object_list, bundle):
+        return True
+
+    def check_create_detail_authority(self, object_list, bundle):
+        return True
+
+    def check_update_list_authority(self, object_list, bundle):
+        return True
+
+    def check_update_detail_authority(self, object_list, bundle):
+        return True
+
+    def check_delete_list_authority(self, object_list, bundle):
+        return True
+
+    def check_delete_detail_authority(self, object_list, bundle):
+        return True
+
+
+class Authorization(Authorization, CheckAuthorityMixin):
+    def __init__(self, *args, **kwargs):
+        crud_list = ['create', 'read', 'update', 'delete']
+        ld_list = ['list', 'detail']
+        for crud in crud_list:
+            for ld in ld_list:
+                auth_check = '%s_%s_authorized' % (crud, ld)
+
+                check_value = False
+                if kwargs.has_key('all'):
+                    check_value = kwargs.get('all', False)
+                elif kwargs.has_key(ld):
+                    check_value = kwargs.get(ld, False)
+                elif kwargs.has_key(crud):
+                    check_value = kwargs.get(crud, False)
+                elif kwargs.has_key(auth_check):
+                    check_value = kwargs.get(auth_check, False)
+
+                setattr(self, auth_check, check_value)
+
+    def read_list(self, object_list, bundle):
+        self.check_authority(object_list, bundle)
+        self.check_list_authority(object_list, bundle)
+        self.check_read_authority(object_list, bundle)
+        self.check_read_list_authority(object_list, bundle)
+
+        if not self.read_list_authorized:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return object_list
+
+    def read_detail(self, object_list, bundle):
+        self.check_authority(object_list, bundle)
+        self.check_detail_authority(object_list, bundle)
+        self.check_read_authority(object_list, bundle)
+        self.check_read_detail_authority(object_list, bundle)
+
+        if not self.read_detail_authorized:
+            raise Unauthorized(_('Sorry, no access'))
+
+        return True
+
+    def create_list(self, object_list, bundle):
+        self.check_authority(object_list, bundle)
+        self.check_list_authority(object_list, bundle)
+        self.check_create_authority(object_list, bundle)
+        self.check_create_list_authority(object_list, bundle)
+
+        if not self.create_list_authorized:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return object_list
+
+    def create_detail(self, object_list, bundle):
+        self.check_authority(object_list, bundle)
+        self.check_detail_authority(object_list, bundle)
+        self.check_create_authority(object_list, bundle)
+        self.check_create_detail_authority(object_list, bundle)
+
+        if not self.create_detail_authorized:
+            raise Unauthorized(_('Sorry, no access'))
+
+        return True
+
+    def update_list(self, object_list, bundle):
+        self.check_authority(object_list, bundle)
+        self.check_list_authority(object_list, bundle)
+        self.check_update_authority(object_list, bundle)
+        self.check_update_list_authority(object_list, bundle)
+
+        if not self.update_list_authorized:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return object_list
+
+    def update_detail(self, object_list, bundle):
+        self.check_authority(object_list, bundle)
+        self.check_detail_authority(object_list, bundle)
+        self.check_update_authority(object_list, bundle)
+        self.check_update_detail_authority(object_list, bundle)
+
+        if not self.update_detail_authorized:
+            raise Unauthorized(_('Sorry, no access'))
+
+        return True
+
+    def delete_list(self, object_list, bundle):
+        self.check_authority(object_list, bundle)
+        self.check_list_authority(object_list, bundle)
+        self.check_delete_authority(object_list, bundle)
+        self.check_delete_list_authority(object_list, bundle)
+
+        if not self.delete_list_authorized:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return object_list
+
+    def delete_detail(self, object_list, bundle):
+        self.check_authority(object_list, bundle)
+        self.check_detail_authority(object_list, bundle)
+        self.check_delete_authority(object_list, bundle)
+        self.check_delete_detail_authority(object_list, bundle)
+
+        if not self.delete_detail_authorized:
+            raise Unauthorized(_('Sorry, no access'))
+
+        return True
+
+
+class AuthenticatedAuthorization(Authorization):
+    def check_authority(self, object_list, bundle):
+        if not bundle.request.user.is_authenticated():
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return super(AuthenticatedAuthorization, self).check_authority(object_list, bundle)
+
+
+class StaffAuthorization(Authorization):
+    def check_authority(self, object_list, bundle):
+        if not bundle.request.user.is_staff:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return super(StaffAuthorization, self).check_authority(object_list, bundle)
+
+
+class SuperUserAuthorization(Authorization):
+    def check_authority(self, object_list, bundle):
+        if not bundle.request.user.is_superuser():
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return super(SuperUserAuthorization, self).check_authority(object_list, bundle)
+
+
+class MultipleAuthorization(Authorization):
+    def __init__(self, *args, **kwargs):
+        super(MultipleAuthorization, self).__init__(all=True)
+
+        self.auth_classes = []
+
+        if kwargs.get('include_django_auth', True):
+            self.auth_classes.append(DjangoAuthorization())
+
+        self.auth_classes = []
+        self.auth_classes += args
+
+    def check_read_list_authority(self, object_list, bundle):
+        auth_check = False
+        for ac in self.auth_classes:
+            try:
+                object_list = ac.read_list(object_list, bundle)
+                auth_check = True
+            except Unauthorized:
+                pass
+
+        if not auth_check:
+            raise Unauthorized(_('Sorry, no access.'))
+        
+        return True
+
+    def check_read_detail_authority(self, object_list, bundle):
+        auth_check = False
+        for ac in self.auth_classes:
+            try:
+                object_list = ac.read_detail(object_list, bundle)
+                auth_check = True
+            except Unauthorized:
+                pass
+
+        if not auth_check:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return True
+
+    def check_create_list_authority(self, object_list, bundle):
+        auth_check = False
+        for ac in self.auth_classes:
+            try:
+                object_list = ac.create_list(object_list, bundle)
+                auth_check = True
+            except Unauthorized:
+                pass
+
+        if not auth_check:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return True
+
+    def check_create_detail_authority(self, object_list, bundle):
+        auth_check = False
+        for ac in self.auth_classes:
+            try:
+                object_list = ac.create_detail(object_list, bundle)
+                auth_check = True
+            except Unauthorized:
+                pass
+
+        if not auth_check:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return True
+
+    def check_update_list_authority(self, object_list, bundle):
+        auth_check = False
+        for ac in self.auth_classes:
+            try:
+                object_list = ac.update_list(object_list, bundle)
+                auth_check = True
+            except Unauthorized:
+                pass
+
+        if not auth_check:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return True
+
+    def check_update_detail_authority(self, object_list, bundle):
+        auth_check = False
+        for ac in self.auth_classes:
+            try:
+                object_list = ac.update_detail(object_list, bundle)
+                auth_check = True
+            except Unauthorized:
+                pass
+
+        if not auth_check:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return True
+
+    def check_delete_list_authority(self, object_list, bundle):
+        auth_check = False
+        for ac in self.auth_classes:
+            try:
+                object_list = ac.delete_list(object_list, bundle)
+                auth_check = True
+            except Unauthorized:
+                pass
+
+        if not auth_check:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return True
+
+    def check_delete_detail_authority(self, object_list, bundle):
+        auth_check = False
+        for ac in self.auth_classes:
+            try:
+                object_list = ac.delete_detail(object_list, bundle)
+                auth_check = True
+            except Unauthorized:
+                pass
+
+        if not auth_check:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return True
+
+
+class AnonymousReadOnlyAuthorization(MultipleAuthorization):
+    def __init__(self, *args):
+        super(AnonymousReadOnlyAuthorization, self).__init__(
+            Authorization(read=True),
+            StaffAuthorization(all=True)
+        )
+
+
+# JUST FOR ModelResource
+class AuthorOnlyAuthorization(Authorization):
+    def __init__(self, author_field, *args, **kwargs):
+        super(AuthorOnlyAuthorization, self).__init__(*args, **kwargs)
+        self.author_field = author_field
+
+    def check_detail_authority(self, object_list, bundle):
+        check = bundle.request.user.is_authenticated() and ((getattr(bundle.obj, self.author_field) is not None and bundle.request.user.pk == getattr(bundle.obj, self.author_field).pk) or bundle.obj.author is None)
+        if not check:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return True
+
+
+class UserModelAuthorization(Authorization):
+    def check_detail_authority(self, object_list, bundle):
+        try:
+            check = bundle.request.user.pk == bundle.obj.pk
+        except:
+            check = False
+
+        if not check:
+            raise Unauthorized(_('Sorry, no access.'))
+
+        return True
+
