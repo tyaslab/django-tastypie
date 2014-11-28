@@ -53,6 +53,16 @@ class Api(object):
             resource._meta.api_name = self.api_name
             resource.__class__.Meta.api_name = self.api_name
 
+    def register_multiple(self, *args, **kwargs):
+        canonical = kwargs.pop('canonical', True)
+
+        for arg in args:
+            if hasattr(arg, '__iter__'):
+                for a in arg:
+                    self.register(a, canonical=canonical)
+            else:
+                self.register(arg, canonical=canonical)
+
     def unregister(self, resource_name):
         """
         If present, unregisters a resource from the API.
