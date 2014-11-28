@@ -843,6 +843,8 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
 
         # Dehydrate each field.
         for field_name, field_object in self.fields.items():
+            if field_object.writeonly is True:
+                continue
             # If it's not for use in this mode, skip
             field_use_in = getattr(field_object, 'use_in', 'all')
             if callable(field_use_in):
@@ -997,6 +999,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
                 'nullable': field_object.null,
                 'blank': field_object.blank,
                 'readonly': field_object.readonly,
+                'writeonly': field_object.writeonly,
                 'help_text': field_object.help_text,
                 'unique': field_object.unique,
             }
@@ -1810,6 +1813,51 @@ class BaseModelResource(Resource):
     Given that it is aware of Django's ORM, it also handles the CRUD data
     operations of the resource.
     """
+    def base_urls(self):
+        urls = super(BaseModelResource, self).base_urls()
+
+        urls = [
+            url(r"^(?P<resource_name>%s)/m2m/(?P<m2m_field>[a-zA-Z_]+)/(?P<%s>.*?)%s$" % (self._meta.resource_name, self._meta.detail_uri_name, trailing_slash()), self.wrap_view('get_m2m_relation'), name="api_get_m2m_relation"),
+        ] + urls
+
+        return urls
+
+    def get_m2m_relation(self, request, **kwargs):
+        m2m_field = kwargs.get('m2m_field')
+
+        m2m_field = self.fields.get(m2m_field, None)
+
+        if m2m_field is None:
+            raise ImmediateHttpResponse(response=http.HttpNotFound())
+
+        m2m_attribute = getattr(m2m_field, 'attribute')
+
+        resource = m2m_field.to_class()
+
+        # TODO: PERHARPS WE CAN HAVE MORE EFFICIENT CODE
+        # start here (adapt from get_list)
+        base_bundle = resource.build_bundle(request=request)
+        # objects = resource.obj_get_list(bundle=base_bundle, **resource.remove_api_resource_names(kwargs))
+        objects = getattr(self.obj_get(bundle=self.build_bundle(request=request)), m2m_attribute).all()
+        sorted_objects = resource.apply_sorting(objects, options=request.GET)
+
+        paginator = resource._meta.paginator_class(request.GET, sorted_objects, resource_uri=resource.get_resource_uri(), limit=resource._meta.limit, max_limit=resource._meta.max_limit, collection_name=resource._meta.collection_name)
+        to_be_serialized = paginator.page()
+
+        # Dehydrate the bundles in preparation for serialization.
+        bundles = []
+
+        for obj in to_be_serialized[resource._meta.collection_name]:
+            bundle = resource.build_bundle(obj=obj, request=request)
+            bundles.append(resource.full_dehydrate(bundle, for_list=True))
+
+        to_be_serialized[resource._meta.collection_name] = bundles
+        to_be_serialized = resource.alter_list_data_to_serialize(request, to_be_serialized)
+
+        return resource.create_response(request, to_be_serialized)
+
+
+
     @classmethod
     def should_skip_field(cls, field):
         """

@@ -27,7 +27,7 @@ class ApiField(object):
     dehydrated_type = 'string'
     help_text = ''
 
-    def __init__(self, attribute=None, default=NOT_PROVIDED, null=False, blank=False, readonly=False, unique=False, help_text=None, use_in='all'):
+    def __init__(self, attribute=None, default=NOT_PROVIDED, null=False, blank=False, readonly=False, writeonly=False, unique=False, help_text=None, use_in='all'):
         """
         Sets up the field. This is generally called when the containing
         ``Resource`` is initialized.
@@ -73,6 +73,7 @@ class ApiField(object):
         self.null = null
         self.blank = blank
         self.readonly = readonly
+        self.writeonly = writeonly
         self.value = None
         self.unique = unique
         self.use_in = 'all'
@@ -106,6 +107,8 @@ class ApiField(object):
         Takes data from the provided object and prepares it for the
         resource.
         """
+        if self.writeonly:
+            return None
         if self.attribute is not None:
             # Check for `__` in the field for looking through the relation.
             attrs = self.attribute.split('__')
@@ -412,7 +415,7 @@ class RelatedField(ApiField):
     self_referential = False
     help_text = 'A related resource. Can be either a URI or set of nested resource data.'
 
-    def __init__(self, to, attribute, related_name=None, default=NOT_PROVIDED, null=False, blank=False, readonly=False, full=False, unique=False, help_text=None, use_in='all', full_list=True, full_detail=True):
+    def __init__(self, to, attribute, related_name=None, default=NOT_PROVIDED, null=False, blank=False, readonly=False, writeonly=False, full=False, unique=False, help_text=None, use_in='all', full_list=True, full_detail=True):
         """
         Builds the field and prepares it to access to related data.
 
@@ -477,6 +480,7 @@ class RelatedField(ApiField):
         self.null = null
         self.blank = blank
         self.readonly = readonly
+        self.writeonly = writeonly
         self.full = full
         self.api_name = None
         self.resource_name = None
@@ -697,11 +701,11 @@ class ToOneField(RelatedField):
     help_text = 'A single related resource. Can be either a URI or set of nested resource data.'
 
     def __init__(self, to, attribute, related_name=None, default=NOT_PROVIDED,
-                 null=False, blank=False, readonly=False, full=False,
+                 null=False, blank=False, readonly=False, writeonly=False, full=False,
                  unique=False, help_text=None, use_in='all', full_list=True, full_detail=True):
         super(ToOneField, self).__init__(
             to, attribute, related_name=related_name, default=default,
-            null=null, blank=blank, readonly=readonly, full=full,
+            null=null, blank=blank, readonly=readonly, writeonly=writeonly, full=full,
             unique=unique, help_text=help_text, use_in=use_in,
             full_list=full_list, full_detail=full_detail
         )
@@ -775,11 +779,11 @@ class ToManyField(RelatedField):
     help_text = 'Many related resources. Can be either a list of URIs or list of individually nested resource data.'
 
     def __init__(self, to, attribute, related_name=None, default=NOT_PROVIDED,
-                 null=False, blank=False, readonly=False, full=False,
+                 null=False, blank=False, readonly=False, writeonly=False, full=False,
                  unique=False, help_text=None, use_in='all', full_list=True, full_detail=True):
         super(ToManyField, self).__init__(
             to, attribute, related_name=related_name, default=default,
-            null=null, blank=blank, readonly=readonly, full=full,
+            null=null, blank=blank, readonly=readonly, writeonly=writeonly, full=full,
             unique=unique, help_text=help_text, use_in=use_in,
             full_list=full_list, full_detail=full_detail
         )
