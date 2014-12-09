@@ -33,6 +33,8 @@ from tastypie.utils.mime import determine_format, build_content_type
 from tastypie.utils.queryset import fuzzy_filter
 from tastypie.validation import Validation
 
+from django.contrib.contenttypes.models import ContentType
+
 import time
 
 # If ``csrf_exempt`` isn't present, stub it.
@@ -950,6 +952,21 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
             raise HydrationError("You must call 'full_hydrate' before attempting to run 'hydrate_m2m' on %r." % self)
 
         for field_name, field_object in self.fields.items():
+            if field_name in getattr(self._meta, 'generic_fields', []):
+                this_gf = bundle.data.get(field_name, [])
+
+                if this_gf:
+                    for key, item_gf in enumerate(this_gf):
+                        # proceed if only item_gf is dict, not full=False
+                        if isinstance(item_gf, dict):
+                            ct = ContentType.objects.get_for_model(self._meta.object_class)
+                            content_type_resource_uri = self._meta.content_type_resource.get_resource_uri(ct)
+
+                            this_gf[key]['content_type'] = content_type_resource_uri
+                            this_gf[key]['object_id'] = bundle.obj.pk
+
+                bundle.data[field_name] = this_gf
+
             if not getattr(field_object, 'is_m2m', False):
                 continue
 
@@ -2475,12 +2492,15 @@ class BaseModelResource(Resource):
             if not related_mngr:
                 continue
 
-            if hasattr(related_mngr, 'clear'):
-                # FIXME: Dupe the original bundle, copy in the new object &
-                #        check the perms on that (using the related resource)?
+            fdsgs = getattr(self._meta, 'generic_fields', [])
 
-                # Clear it out, just to be safe.
-                related_mngr.clear()
+            if field_name not in getattr(self._meta, 'generic_fields', []):
+                if hasattr(related_mngr, 'clear'):
+                    # FIXME: Dupe the original bundle, copy in the new object &
+                    #        check the perms on that (using the related resource)?
+
+                    # Clear it out, just to be safe.
+                    related_mngr.clear()
 
             related_objs = []
 
