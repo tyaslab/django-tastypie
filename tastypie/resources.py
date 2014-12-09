@@ -2160,13 +2160,16 @@ class BaseModelResource(Resource):
 
         return object_list
 
-    def get_object_list(self, request):
+    def get_object_list(self, request, queryset=None):
         """
         An ORM-specific implementation of ``get_object_list``.
 
         Returns a queryset that may have been limited by other overrides.
         """
-        return self._meta.queryset._clone()
+        if queryset is None:
+            return self._meta.queryset._clone()
+
+        return queryset
 
     def obj_get_list(self, bundle, **kwargs):
         """
