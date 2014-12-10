@@ -1059,7 +1059,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
 
     # Data access methods.
 
-    def get_object_list(self, request):
+    def get_object_list(self, request, queryset=None):
         """
         A hook to allow making returning the list of available objects.
 
@@ -1101,7 +1101,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         allowed = set(self._meta.list_allowed_methods + self._meta.detail_allowed_methods)
         return 'delete' in allowed
 
-    def apply_filters(self, request, applicable_filters):
+    def apply_filters(self, request, applicable_filters, queryset=None):
         """
         A hook to alter how the filters are applied to the object list.
 
@@ -1112,7 +1112,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         """
         raise NotImplementedError()
 
-    def obj_get_list(self, bundle, **kwargs):
+    def obj_get_list(self, bundle, queryset=None, **kwargs):
         """
         Fetches the list of objects available on the resource.
 
@@ -2157,15 +2157,17 @@ class BaseModelResource(Resource):
 
         return obj_list.order_by(*order_by_args)
 
-    def apply_filters(self, request, applicable_filters):
+    def apply_filters(self, request, applicable_filters, queryset=None):
         """
         An ORM-specific implementation of ``apply_filters``.
 
         The default simply applies the ``applicable_filters`` as ``**kwargs``,
         but should make it possible to do more advanced things.
         """
-
-        object_list = self.get_object_list(request).filter(**applicable_filters)
+        if queryset is None:
+            object_list = self.get_object_list(request, queryset=queryset).filter(**applicable_filters)
+        else:
+            object_list = queryset
 
         # fuzzy filtering
         # Howto: Set fuzzy_querystring and fuzzy_fields in Meta class
@@ -2188,7 +2190,7 @@ class BaseModelResource(Resource):
 
         return queryset
 
-    def obj_get_list(self, bundle, **kwargs):
+    def obj_get_list(self, bundle, queryset=None, **kwargs):
         """
         A ORM-specific implementation of ``obj_get_list``.
 
@@ -2206,7 +2208,7 @@ class BaseModelResource(Resource):
         applicable_filters = self.build_filters(filters=filters)
 
         try:
-            objects = self.apply_filters(bundle.request, applicable_filters)
+            objects = self.apply_filters(bundle.request, applicable_filters, queryset=queryset)
             return self.authorized_read_list(objects, bundle)
         except ValueError:
             raise BadRequest("Invalid resource lookup data provided (mismatched type).")
