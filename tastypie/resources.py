@@ -12,6 +12,7 @@ from django.core.signals import got_request_exception
 from django.db import transaction
 from django.db.models.constants import LOOKUP_SEP
 from django.db.models.sql.constants import QUERY_TERMS
+from django.db.models.fields.related import RelatedField
 from django.http import HttpResponse, HttpResponseNotFound, Http404
 from django.utils.cache import patch_cache_control, patch_vary_headers
 from django.utils.html import escape
@@ -1326,7 +1327,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
             this_errors = []
             for validator_class, validator_kwargs in self._meta.validators[field]:
                 try:
-                    validator_class(bundle, **validator_kwargs).validate(data[field])
+                    validator_class(bundle, **validator_kwargs).validate(data.get('field', None))
                 except ValidationError as ve:
                     if not error_occurs: error_occurs = True
                     this_errors.append(ve.message)
