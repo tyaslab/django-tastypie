@@ -8,7 +8,7 @@ from tastypie.resources import ModelResource
 from tastypie.exceptions import NotFound
 
 
-class PolymorphicModelResource(ModelResource):
+class PolymorphicModelResourceMixin(object):
     class Meta:
         polymorphic_resources = {}
 
@@ -22,7 +22,7 @@ class PolymorphicModelResource(ModelResource):
 
         queryset = self._meta.object_class.objects.all()
 
-        return super(PolymorphicModelResource, self).get_object_list(request, queryset=queryset)
+        return super(PolymorphicModelResourceMixin, self).get_object_list(request, queryset=queryset)
 
     def full_dehydrate(self, bundle, for_list=False):
         real_model = bundle.obj.get_real_instance_class()
@@ -48,7 +48,7 @@ class PolymorphicModelResource(ModelResource):
             self.fields = getattr(self, 'original_fields', self.fields)
             self._meta.resource_name = getattr(self, 'original_resource_name', self._meta.resource_name)
 
-        return super(PolymorphicModelResource, self).full_dehydrate(bundle, for_list=for_list)
+        return super(PolymorphicModelResourceMixin, self).full_dehydrate(bundle, for_list=for_list)
 
     def get_via_uri(self, uri, request=None):
         """
@@ -61,4 +61,9 @@ class PolymorphicModelResource(ModelResource):
         uri_kwargs[self._meta.detail_uri_name] = detail_uri_name
         uri = self._build_reverse_url('api_dispatch_detail', kwargs=uri_kwargs)
 
-        return super(PolymorphicModelResource, self).get_via_uri(uri, request=request)
+        return super(PolymorphicModelResourceMixin, self).get_via_uri(uri, request=request)
+
+
+class PolymorphicModelResource(PolymorphicModelResourceMixin, ModelResource):
+    class Meta(PolymorphicModelResourceMixin.Meta):
+        pass
