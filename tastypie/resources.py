@@ -301,6 +301,15 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         """
         return reverse(name, args=args, kwargs=kwargs)
 
+    def _add_error_message(self, bundle, resource_name, field, message):
+        if not bundle.errors.has_key(resource_name):
+            bundle.errors[resource_name] = {}
+
+        if not bundle.errors[resource_name].has_key(field):
+            bundle.errors[resource_name][field] = []
+
+        bundle.errors[resource_name][field].append(message)
+
     def base_urls(self):
         """
         The standard URLs this ``Resource`` should respond to.
@@ -1293,7 +1302,6 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         """
 
         validators = getattr(self._meta, 'validators', None)
-
         if validators is None:
             return self.old_is_valid(bundle) # FALLBACK
 
@@ -1323,16 +1331,37 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         data = bundle.data.copy()
         error_occurs = False
         errors = {}
+
+        # validate by _meta
         for field in fields_to_validate:
-            this_errors = []
+            # this_errors = []
             for validator_class, validator_kwargs in self._meta.validators[field]:
                 try:
                     validator_class(bundle, **validator_kwargs).validate(data.get('field', None))
                 except ValidationError as ve:
                     if not error_occurs: error_occurs = True
-                    this_errors.append(ve.message)
-            if this_errors:
-                errors.update({field:this_errors})
+                    # this_errors.append(ve.message)
+                    self._add_error_message(bundle, self._meta.resource_name, field, ve.message)
+
+            # if this_errors:
+            #     errors.update({field:this_errors})
+        
+        # validate by method
+        for field in self.fields.keys():
+            # this_errors = []
+            validation_method = 'validate_%s' % field
+            if hasattr(self, validation_method):
+                try:
+                    getattr(self, validation_method)(bundle)
+                except ValidationError as ve:
+                    if not error_occurs: error_occurs = True
+                    self._add_error_message(bundle, self._meta.resource_name, field, ve.message)
+            #         this_errors.append(ve.message)
+
+            # if errors.has_key(field):
+            #     errors[field] += this_errors
+            # else:
+            #     errors.update({field:this_errors})
 
         if error_occurs:
             bundle.errors[self._meta.resource_name] = errors
