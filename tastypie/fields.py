@@ -215,7 +215,10 @@ class FileField(ApiField):
         try:
             # Try to return the URL if it's a ``File``, falling back to the string
             # itself if it's been overridden or is a default.
-            return getattr(value, 'url', value)
+
+            # We must return value as is. TO OMOIMASU.
+            # return getattr(value, 'url', value)
+            return value
         except ValueError:
             return None
 
