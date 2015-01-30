@@ -4,7 +4,8 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import Q
-from tastypie.fields import DateField
+from tastypie.exceptions import ApiFieldError
+from tastypie.fields import DateField, TimeField, DateTimeField
 
 class Validator(object):
     title = 'input'
@@ -98,6 +99,39 @@ class RequiredValidator(Validator):
 
     def validate(self, value, **kwargs):
         is_valid = value is not None
+        return self.return_or_raise(is_valid)
+
+
+class DateValidator(Validator):
+    def validate(self, value, **kwargs):
+        try:
+            date_field = DateField().convert(value)
+            is_valid = True
+        except ApiFieldError:
+            is_valid = False
+
+        return self.return_or_raise(is_valid)
+
+
+class TimeValidator(Validator):
+    def validate(self, value, **kwargs):
+        try:
+            date_field = TimeField().convert(value)
+            is_valid = True
+        except ApiFieldError:
+            is_valid = False
+
+        return self.return_or_raise(is_valid)
+
+
+class DateTimeValidator(Validator):
+    def validate(self, value, **kwargs):
+        try:
+            date_field = DateTimeField().convert(value)
+            is_valid = True
+        except ApiFieldError:
+            is_valid = False
+
         return self.return_or_raise(is_valid)
 
 
