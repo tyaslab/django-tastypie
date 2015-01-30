@@ -1305,9 +1305,9 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         if validators is None:
             return self.old_is_valid(bundle) # FALLBACK
 
-        return self.validate_all(bundle)
+        return self.validate_all(bundle, validators=validators, with_methods=True)
 
-    def validate_all(self, bundle):
+    def validate_all(self, bundle, validators=None, with_methods=False):
         '''
         #FIXME: Temporarily, cannot validate Relational Fields.
         '''
@@ -1329,45 +1329,40 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         fields_to_validate = [field for field in fields_to_validate if field not in relational_fields]
 
         data = bundle.data.copy()
-        error_occurs = False
-        errors = {}
 
-        # validate by _meta
-        for field in fields_to_validate:
-            # this_errors = []
-            for validator_class, validator_kwargs in self._meta.validators[field]:
-                try:
-                    validator_class(bundle, **validator_kwargs).validate(data.get('field', None))
-                except ValidationError as ve:
-                    if not error_occurs: error_occurs = True
-                    # this_errors.append(ve.message)
-                    self._add_error_message(bundle, self._meta.resource_name, field, ve.message)
+        # validate by validators if ony validators are specified
+        if validators:
+            for field in fields_to_validate:
+                # this_errors = []
+                for validator in validators[field]:
+                    try:
+                        validator.validate(data.get(field, None), bundle=bundle)
+                    except ValidationError as ve:
 
-            # if this_errors:
-            #     errors.update({field:this_errors})
+                        # this_errors.append(ve.message)
+                        self._add_error_message(bundle, self._meta.resource_name, field, ve.message)
+
+                # if this_errors:
+                #     errors.update({field:this_errors})
         
-        # validate by method
-        for field in self.fields.keys():
-            # this_errors = []
-            validation_method = 'validate_%s' % field
-            if hasattr(self, validation_method):
-                try:
-                    getattr(self, validation_method)(bundle)
-                except ValidationError as ve:
-                    if not error_occurs: error_occurs = True
-                    self._add_error_message(bundle, self._meta.resource_name, field, ve.message)
-            #         this_errors.append(ve.message)
+        # validate by method if with_methods is True
+        if with_methods:
+            for field in self.fields.keys():
+                # this_errors = []
+                validation_method = 'validate_%s' % field
+                if hasattr(self, validation_method):
+                    try:
+                        getattr(self, validation_method)(bundle)
+                    except ValidationError as ve:
+                        self._add_error_message(bundle, self._meta.resource_name, field, ve.message)
+                #         this_errors.append(ve.message)
 
-            # if errors.has_key(field):
-            #     errors[field] += this_errors
-            # else:
-            #     errors.update({field:this_errors})
+                # if errors.has_key(field):
+                #     errors[field] += this_errors
+                # else:
+                #     errors.update({field:this_errors})
 
-        if error_occurs:
-            bundle.errors[self._meta.resource_name] = errors
-            return False
-
-        return True
+        return bool(bundle.errors)
 
     def rollback(self, bundles):
         """
@@ -2200,7 +2195,7 @@ class BaseModelResource(Resource):
         if queryset is None:
             object_list = self.get_object_list(request, queryset=queryset).filter(**applicable_filters)
         else:
-            object_list = queryset
+            object_list = queryset.filter(**applicable_filters)
 
         # fuzzy filtering
         # Howto: Set fuzzy_querystring and fuzzy_fields in Meta class

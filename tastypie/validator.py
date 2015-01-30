@@ -1,78 +1,188 @@
+import datetime
+import re
+from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import Q
+from tastypie.fields import DateField
 
 class Validator(object):
-    message = 'Please check your input'
-    def __init__(self, bundle, title, *args, **kwargs):
-        self.bundle = bundle
-        self.title = title
-        self.args = args
-        self.kwargs = kwargs
+    title = 'input'
+    message = 'Please check %(title)s'
 
-    def get_error_message(self):
-        return self.message % {'title':self.title}
+    def __init__(self, **kwargs):
+        self.title = kwargs.pop('title', self.title)
+        self.message = kwargs.pop('message', self.message)
 
-    def validate(self, value):
+    def get_error_message(self, **kwargs):
+        if not kwargs.has_key('title'):
+            kwargs['title'] = self.title
+
+        error_message = self.message % kwargs
+        error_message = '%s%s' % (error_message[0].upper(), error_message[1:-1])
+
+        return self.message % kwargs
+
+    def validate(self, value, bundle=None, **kwargs):
         raise NotImplementedError
+
+    def return_or_raise(self, is_valid):
+        if not is_valid:
+            raise ValidationError(self.get_error_message())
+
+        return True
 
 
 class UniqueValidator(Validator):
     message = 'Choose another %(title)s'
 
-    def __init__(self, bundle, title, list_set, *args, **kwargs):
-        super(UniqueValidator, self).__init__(bundle, title, *args, **kwargs)
-        self.list_set = self.get_list_set(list_set)
+    def __init__(self, **kwargs):
+        super(UniqueValidator, self).__init__(**kwargs)
+        self.list_set = kwargs.pop('list_set')
+        self.case_sensitive = kwargs.pop('case_sensitive', True)
 
-    def get_list_set(self, list_set):
-        if self.kwargs.get('case_sensitive', False):
-            list_set = [x.lower() for x in list_set]
+        if not self.case_sensitive:
+            self.list_set = [x.lower() for x in self.list_set if isinstance(x, (str, unicode))]
 
-        return list_set
+    def validate(self, value, bundle=None, **kwargs):
+        if value is None:
+            return self.return_or_raise(True)
 
-    def validate(self, value):
         is_valid = True
 
-        if self.kwargs.get('case_sensitive', False):
+        if not self.case_sensitive and isinstance(value, (str, unicode)):
             value = value.lower()
 
-        if self.bundle is None or self.bundle.request.method == 'POST':
+        if bundle is None or bundle.request.method == 'POST':
             is_valid = value not in self.list_set
 
-        if not is_valid:
-            raise ValidationError(self.get_error_message())
-
-        return True
+        return self.return_or_raise(is_valid)
 
 
 class ModelUniqueValidator(Validator):
     message = 'Choose another %(title)s'
-    def __init__(self, bundle, title, field, *args, **kwargs):
-        super(ModelUniqueValidator, self).__init__(bundle, title, *args, **kwargs)
-        self.field = field
-        # TODO: more fields so we can validate more than one field at once
 
-    def validate(self, value):
+    def __init__(self, **kwargs):
+        super(ModelUniqueValidator, self).__init__(**kwargs)
+        self.case_sensitive = kwargs.pop('case_sensitive', True)
+        self.field = kwargs.pop('field')
+
+    def validate(self, value, bundle, **kwargs):
+        if value is None:
+            return self.return_or_raise(True)
+
         is_valid = True
 
         # build kwargs
         kwargs = {
-            self.field: getattr(self.bundle.obj, self.field)
+            self.field: getattr(bundle.obj, self.field)
         }
 
-        if not self.kwargs.get('case_sensitive', False):
+        if not self.case_sensitive:
             kwargs = {
-                '%s__iexact' % self.field : getattr(self.bundle.obj, self.field)
+                '%s__iexact' % self.field : getattr(bundle.obj, self.field)
             }
 
-        list_set = self.bundle.obj.__class__._default_manager.filter(Q(**kwargs))
+        list_set = bundle.obj.__class__._default_manager.filter(Q(**kwargs))
 
-        if self.bundle.obj.pk:
-            list_set = list_set.filter(~Q(pk=self.bundle.obj.pk))
+        if bundle.obj.pk:
+            list_set = list_set.filter(~Q(pk=bundle.obj.pk))
 
         is_valid = not list_set.exists()
 
-        if not is_valid:
-            raise ValidationError(self.get_error_message())
+        return self.return_or_raise(is_valid)
 
-        return True
+
+class RequiredValidator(Validator):
+    message = '%(title)s is required'
+
+    def validate(self, value, **kwargs):
+        is_valid = value is not None
+        return self.return_or_raise(is_valid)
+
+
+class AgeValidator(Validator):
+    title = 'age'
+    message = '%(title)s must be as minimal as %(age)s'
+
+    def __init__(self, **kwargs):
+        super(AgeValidator, self).__init__(**kwargs)
+        self.age = kwargs.pop('age')
+
+    def validate(self, value, **kwargs):
+        if value is None:
+            return self.return_or_raise(True)
+
+        if isinstance(value, (str, unicode)):
+            value = DateField().convert(value)
+
+        now = timezone.now()
+        years_ago = now.replace(year=now.year-self.age)
+
+        is_valid = value < years_ago
+
+        return self.return_or_raise(is_valid)
+
+    def get_error_message(self, **kwargs):
+        return super(AgeValidator, self).get_error_message(age=self.age)
+
+
+class ChoiceValidator(Validator):
+    message = '%(title)s is not a valid choice'
+    def __init__(self, **kwargs):
+        super(ChoiceValidator, self).__init__(**kwargs)
+        self.case_sensitive = kwargs.pop('case_sensitive', True)
+        self.choices = kwargs.pop('choices')
+
+    def validate(self, value, **kwargs):
+        if value is None:
+            return self.return_or_raise(True)
+
+        if not self.case_sensitive and isinstance(value, (str, unicode)):
+            value = value.lower()
+
+        is_valid = value in self.choices
+
+        return self.return_or_raise(is_valid)
+
+
+class RegexValidator(Validator):
+    message = '%(title)s does not match pattern'
+
+    def __init__(self, **kwargs):
+        super(RegexValidator, self).__init__(**kwargs)
+        self.pattern = kwargs.pop('pattern', self.pattern)
+
+    def validate(self, value, **kwargs):
+        if value is None:
+            return self.return_or_raise(True)
+
+        if not isinstance(value, (str, unicode)):
+            value = str(value)
+
+        p = re.compile(self.pattern)
+        m = p.match(value)
+
+        is_valid = bool(m)
+
+        return self.return_or_raise(is_valid)
+
+
+class EmailValidator(RegexValidator):
+    title = 'email'
+    message = 'Enter a valid %(title)s address'
+    pattern = r'[a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9_\-\.]+'
+
+
+class NumberValidator(RegexValidator):
+    title = 'number'
+    pattern = r'^[0-9]+$'
+
+
+class DecimalValidator(RegexValidator):
+    pattern = r'^[0-9]+\.?[0-9]+$'
+
+
+class PhoneNumberValidator(RegexValidator):
+    title = 'phone number'
+    pattern = r'^\+?[0-9\-\s]+$'
