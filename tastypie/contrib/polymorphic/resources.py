@@ -26,11 +26,11 @@ class PolymorphicModelResourceMixin(object):
 
     def full_dehydrate(self, bundle, for_list=False):
         real_model = bundle.obj.get_real_instance_class()
-        key = '%s.%s' % (real_model._meta.app_label, real_model.__name__)
 
         is_parent_model = real_model == self._meta.object_class
 
         if not is_parent_model:
+            key = '%s.%s' % (real_model._meta.app_label, real_model.__name__)
             polymorphic_resource = self.get_polymorphic_resource(key)
 
             if bundle.obj is None:
@@ -63,6 +63,21 @@ class PolymorphicModelResourceMixin(object):
 
         return super(PolymorphicModelResourceMixin, self).get_via_uri(uri, request=request)
 
+    def build_filters(self, filters=None):
+        injected_filter = {}
+        inject = False
+        if filters.get('polymorphic_ctype_id', None):
+            inject = True
+            injected_filter = {
+                'polymorphic_ctype_id': filters['polymorphic_ctype_id']
+            }
+
+        filters = super(PolymorphicModelResourceMixin, self).build_filters(filters=filters)
+
+        if inject:
+            filters.update(injected_filter)
+
+        return filters
 
 class PolymorphicModelResource(PolymorphicModelResourceMixin, ModelResource):
     class Meta(PolymorphicModelResourceMixin.Meta):
