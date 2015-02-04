@@ -182,13 +182,14 @@ class ChoiceValidator(Validator):
 
 class RegexValidator(Validator):
     message = '%(title)s does not match pattern'
+    pattern = None
 
     def __init__(self, **kwargs):
         super(RegexValidator, self).__init__(**kwargs)
         self.pattern = kwargs.pop('pattern', self.pattern)
 
     def validate(self, value, **kwargs):
-        if value is None:
+        if value is None or value == '':
             return self.return_or_raise(True)
 
         if not isinstance(value, (str, unicode)):
@@ -210,11 +211,26 @@ class EmailValidator(RegexValidator):
 
 class NumberValidator(RegexValidator):
     title = 'number'
-    pattern = r'^[0-9]+$'
+
+    def __init__(self, **kwargs):
+        super(NumberValidator, self).__init__(**kwargs)
+        self.include_negative = kwargs.pop('include_negative', False)
+
+        if self.include_negative:
+            self.pattern = r'^\-[0-9]+$'
+        else:
+            self.pattern = r'^[0-9]+$'
 
 
 class DecimalValidator(RegexValidator):
-    pattern = r'^[0-9]+\.?[0-9]+$'
+    def __init__(self, **kwargs):
+        super(DecimalValidator, self).__init__(**kwargs)
+        self.include_negative = kwargs.pop('include_negative', False)
+
+        if self.include_negative:
+            self.pattern = r'^\-[0-9]+\.?[0-9]+$'
+        else:
+            self.pattern = r'^[0-9]+\.?[0-9]+$'
 
 
 class PhoneNumberValidator(RegexValidator):
