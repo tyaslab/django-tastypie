@@ -1,4 +1,5 @@
 from tastypie.resources import ModelResource
+from tastypie.utils import dict_strip_unicode_keys
 from django.utils.importlib import import_module
 
 def load_variable(module_path):
@@ -12,6 +13,32 @@ def load_variable(module_path):
 
 
 class PolymorphicModelResourceMixin(object):
+    def build_filters(self, filters=None):
+        if filters is not None:
+            filters = dict_strip_unicode_keys(filters)
+
+            applicable_filters = []
+
+            for key, content_list in self._meta.filtering.items():
+                if isinstance(content_list, list):
+                    for content in content_list:
+                        applicable_filters.append('%s__%s' % (key, content))
+                        if content == 'exact':
+                            applicable_filters.append(key)
+
+            new_filters = {}
+            for key in filters.keys():
+                if key in applicable_filters:
+                    new_filters.update({
+                        key: filters[key]
+                    })
+
+            filters = new_filters.copy()
+
+            return filters
+
+        return super(PolymorphicModelResourceMixin, self).build_filters(filters=filters)
+
     def get_polymorphic_resource(self, bundle):
         if type(bundle.obj) == self._meta.object_class:
             return self
