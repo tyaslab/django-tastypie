@@ -1295,7 +1295,6 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
 
         return True
 
-
     def is_valid(self, bundle):
         """
         On my way, validation should be performed one by one. And I call it 'validators' not 'validation'
@@ -1863,6 +1862,7 @@ class BaseModelResource(Resource):
 
         urls = [
             url(r"^(?P<resource_name>%s)/m2m/(?P<m2m_field>[a-zA-Z_]+)/(?P<%s>.*?)%s$" % (self._meta.resource_name, self._meta.detail_uri_name, trailing_slash()), self.wrap_view('get_m2m_relation'), name="api_get_m2m_relation"),
+            url(r"^(?P<resource_name>%s)/choices/(?P<field>[a-zA-Z_]+)%s$" % (self._meta.resource_name, trailing_slash()), self.wrap_view('get_choices'), name="api_get_choices"),
         ] + urls
 
         return urls
@@ -1901,7 +1901,24 @@ class BaseModelResource(Resource):
 
         return resource.create_response(request, to_be_serialized)
 
+    def get_choices(self, request, **kwargs):
+        field_list = self._meta.object_class._meta.fields
+        field = [x for x in field_list if x.name == kwargs['field']]
 
+        if len(field) > 0:
+            field = field[0]
+
+            choices = []
+
+            for c in field.choices:
+                choices.append({
+                    'slug': c[0],
+                    'title': c[1]
+                })
+
+            return self.create_response(request, choices)
+
+        raise ImmediateHttpResponse(response=http.HttpBadRequest())
 
     @classmethod
     def should_skip_field(cls, field):
