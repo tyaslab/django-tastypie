@@ -153,7 +153,7 @@ class AgeValidator(Validator):
         now = timezone.now()
         years_ago = now.replace(year=now.year-self.age)
 
-        is_valid = value < years_ago
+        is_valid = value <= years_ago
 
         return self.return_or_raise(is_valid)
 
