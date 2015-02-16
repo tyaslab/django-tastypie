@@ -3,6 +3,7 @@ from __future__ import with_statement
 from copy import deepcopy
 import logging
 import warnings
+import json
 
 from django.conf import settings
 from django.conf.urls import patterns, url
@@ -853,8 +854,16 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         """
         use_in = ['all', 'list' if for_list else 'detail']
 
+        _fields = bundle.request.GET.get('_fields', [])
+
+        if _fields:
+            _fields = _fields.split(',')
+
         # Dehydrate each field.
         for field_name, field_object in self.fields.items():
+            if _fields and field_name not in _fields:
+                continue
+
             if field_object.writeonly is True:
                 continue
             # If it's not for use in this mode, skip
@@ -1863,13 +1872,14 @@ class BaseModelResource(Resource):
         urls = [
             url(r"^(?P<resource_name>%s)/m2m/(?P<m2m_field>[a-zA-Z_]+)/(?P<%s>.*?)%s$" % (self._meta.resource_name, self._meta.detail_uri_name, trailing_slash()), self.wrap_view('get_m2m_relation'), name="api_get_m2m_relation"),
             url(r"^(?P<resource_name>%s)/choices/(?P<field>[a-zA-Z_]+)%s$" % (self._meta.resource_name, trailing_slash()), self.wrap_view('get_choices'), name="api_get_choices"),
+            url(r"^(?P<resource_name>%s)/list/(?P<field>[a-zA-Z_]+)%s$" % (self._meta.resource_name, trailing_slash()), self.wrap_view('get_field_data'), name="api_get_field_data"),
         ] + urls
 
         return urls
 
     def get_m2m_relation(self, request, **kwargs):
+        ## FIXME: Buggy!!!
         m2m_field = kwargs.get('m2m_field')
-
         m2m_field = self.fields.get(m2m_field, None)
 
         if m2m_field is None:
@@ -1883,7 +1893,7 @@ class BaseModelResource(Resource):
         # start here (adapt from get_list)
         base_bundle = resource.build_bundle(request=request)
         # objects = resource.obj_get_list(bundle=base_bundle, **resource.remove_api_resource_names(kwargs))
-        objects = getattr(self.obj_get(bundle=self.build_bundle(request=request)), m2m_attribute).all()
+        objects = getattr(self.obj_get(bundle=self.build_bundle(request=request), **self.remove_api_resource_names(kwargs)), m2m_attribute).all()
         sorted_objects = resource.apply_sorting(objects, options=request.GET)
 
         paginator = resource._meta.paginator_class(request.GET, sorted_objects, resource_uri=resource.get_resource_uri(), limit=resource._meta.limit, max_limit=resource._meta.max_limit, collection_name=resource._meta.collection_name)
@@ -1919,6 +1929,20 @@ class BaseModelResource(Resource):
             return self.create_response(request, choices)
 
         raise ImmediateHttpResponse(response=http.HttpBadRequest())
+
+    def get_field_data(self, request, **kwargs):
+        response = self.get_list(request, **kwargs)
+        content_list = json.loads(response.content)[self._meta.collection_name]
+
+        results = []
+
+        for content in content_list:
+            x = content.get(kwargs['field'])
+
+            if x not in results:
+                results.append(x)
+
+        return self.create_response(request, results)
 
     @classmethod
     def should_skip_field(cls, field):
