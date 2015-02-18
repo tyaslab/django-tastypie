@@ -1879,7 +1879,7 @@ class BaseModelResource(Resource):
 
     def get_m2m_relation(self, request, **kwargs):
         ## FIXME: Buggy!!!
-        m2m_field = kwargs.get('m2m_field')
+        m2m_field = kwargs.pop('m2m_field')
         m2m_field = self.fields.get(m2m_field, None)
 
         if m2m_field is None:
