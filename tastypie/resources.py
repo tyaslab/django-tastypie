@@ -1907,7 +1907,7 @@ class BaseModelResource(Resource):
             bundles.append(resource.full_dehydrate(bundle, for_list=True))
 
         to_be_serialized[resource._meta.collection_name] = bundles
-        to_be_serialized = resource.alter_list_data_to_serialize(request, to_be_serialized)
+        to_be_serialized = resource.alter_list_data_to_serialize(request, to_be_serialized, queryset=sorted_objects)
 
         return resource.create_response(request, to_be_serialized)
 
