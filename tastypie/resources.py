@@ -397,7 +397,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         deserialized = self._meta.serializer.deserialize(data, format=request.META.get('CONTENT_TYPE', 'application/json'))
         return deserialized
 
-    def alter_list_data_to_serialize(self, request, data):
+    def alter_list_data_to_serialize(self, request, data, queryset=None):
         """
         A hook to alter list data just before it gets serialized & sent to the user.
 
@@ -861,7 +861,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
 
         # Dehydrate each field.
         for field_name, field_object in self.fields.items():
-            if _fields and field_name not in _fields:
+            if _fields and (field_name not in _fields) and ('%s__%s' % (self._meta.resource_name, field_name) not in _fields):
                 continue
 
             if field_object.writeonly is True:
@@ -1416,7 +1416,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
             bundles.append(self.full_dehydrate(bundle, for_list=True))
 
         to_be_serialized[self._meta.collection_name] = bundles
-        to_be_serialized = self.alter_list_data_to_serialize(request, to_be_serialized)
+        to_be_serialized = self.alter_list_data_to_serialize(request, to_be_serialized, queryset=sorted_objects)
         return self.create_response(request, to_be_serialized)
 
     def get_detail(self, request, **kwargs):
