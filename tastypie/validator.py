@@ -60,6 +60,38 @@ class UniqueValidator(Validator):
         return self.return_or_raise(is_valid)
 
 
+class MaxLengthValidator(Validator):
+    message = 'Max length is %(max_length)s'
+
+    def __init__(self, max_length, **kwargs):
+        super(MaxLengthValidator, self).__init__(**kwargs)
+        self.max_length = max_length
+
+    def validate(self, value, **kwargs):
+        if value is None:
+            return self.return_or_raise(True)
+
+        is_valid = len(value) <= self.max_length
+
+        return self.return_or_raise(is_valid)
+
+
+class MinLengthValidator(Validator):
+    message = 'Min length is %(min_length)s'
+
+    def __init__(self, min_length, **kwargs):
+        super(MinLengthValidator, self).__init__(**kwargs)
+        self.min_length = min_length
+
+    def validate(self, value, **kwargs):
+        if value is None:
+            return self.return_or_raise(True)
+
+        is_valid = len(value) >= self.min_length
+
+        return self.return_or_raise(is_valid)
+
+
 class ModelUniqueValidator(Validator):
     message = 'Choose another %(title)s'
 
