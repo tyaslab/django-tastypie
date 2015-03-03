@@ -268,3 +268,8 @@ class DecimalValidator(RegexValidator):
 class PhoneNumberValidator(RegexValidator):
     title = 'phone number'
     pattern = r'^\+?[0-9\-\s]+$'
+
+
+class HexValidator(RegexValidator):
+    title = 'hex'
+    pattern = r'^[a-fA-F0-9]+$'
