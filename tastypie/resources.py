@@ -2202,6 +2202,9 @@ class BaseModelResource(Resource):
             if not isinstance(order_bits, (list, tuple)):
                 order_bits = [order_bits]
 
+        # fixed when order_by= (accidental query)
+        order_bits = filter(lambda x: bool(x), order_bits)
+
         for order_by in order_bits:
             order_by_bits = order_by.split(LOOKUP_SEP)
 
