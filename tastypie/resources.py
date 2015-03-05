@@ -13,7 +13,7 @@ from django.core.signals import got_request_exception
 from django.db import transaction
 from django.db.models.constants import LOOKUP_SEP
 from django.db.models.sql.constants import QUERY_TERMS
-from django.db.models.fields.related import RelatedField
+from tastypie.fields import RelatedField
 from django.http import HttpResponse, HttpResponseNotFound, Http404
 from django.utils.cache import patch_cache_control, patch_vary_headers
 from django.utils.html import escape
@@ -1334,24 +1334,24 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
             fields_to_validate = list(set(bundle.data.keys() and self._meta.validators.keys()))
 
         #FIXME: Improve this validator so it can validate relational fields
-        fields_to_validate = [field for field in fields_to_validate if field not in relational_fields]
+        # fields_to_validate = [field for field in fields_to_validate if field not in relational_fields]
 
         data = bundle.data.copy()
 
         # validate by validators if ony validators are specified
         if validators:
             for field in fields_to_validate:
-                # this_errors = []
+                value_to_validate = data.get(field, None)
+
                 for validator in validators[field]:
+                    # if field in relational_fields and value_to_validate is not None:
+                    #     value_to_validate = self.fields[field].hydrate(bundle).obj
                     try:
-                        validator.validate(data.get(field, None), bundle=bundle)
+                        validator.validate(value_to_validate, bundle=bundle)
                     except ValidationError as ve:
 
                         # this_errors.append(ve.message)
                         self._add_error_message(bundle, self._meta.resource_name, field, ve.message)
-
-                # if this_errors:
-                #     errors.update({field:this_errors})
         
         # validate by method if with_methods is True
         if with_methods:
