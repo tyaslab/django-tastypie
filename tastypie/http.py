@@ -10,9 +10,12 @@ class HttpCreated(HttpResponse):
 
     def __init__(self, *args, **kwargs):
         location = kwargs.pop('location', '')
+        detail_uri = kwargs.pop('detail_uri', None)
 
         super(HttpCreated, self).__init__(*args, **kwargs)
         self['Location'] = location
+        if detail_uri:
+            self['DetailUri'] = detail_uri
 
 
 class HttpAccepted(HttpResponse):

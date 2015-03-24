@@ -1460,7 +1460,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         location = self.get_resource_uri(updated_bundle)
 
         if not self._meta.always_return_data:
-            return http.HttpCreated(location=location)
+            return http.HttpCreated(location=location, detail_uri=getattr(updated_bundle.obj, self._meta.detail_uri_name))
         else:
             updated_bundle = self.full_dehydrate(updated_bundle)
             updated_bundle = self.alter_detail_data_to_serialize(request, updated_bundle)
@@ -1557,7 +1557,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
             location = self.get_resource_uri(updated_bundle)
 
             if not self._meta.always_return_data:
-                return http.HttpCreated(location=location)
+                return http.HttpCreated(location=location, detail_uri=getattr(updated_bundle.obj, self._meta.detail_uri_name))
             else:
                 updated_bundle = self.full_dehydrate(updated_bundle)
                 updated_bundle = self.alter_detail_data_to_serialize(request, updated_bundle)
