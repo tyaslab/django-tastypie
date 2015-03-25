@@ -118,6 +118,7 @@ class ModelUniqueValidator(Validator):
 
         list_set = bundle.obj.__class__._default_manager.filter(Q(**kwargs))
 
+        # if object already exists, then exlude itself from the list
         if bundle.obj.pk:
             list_set = list_set.filter(~Q(pk=bundle.obj.pk))
 
