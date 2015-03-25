@@ -13,6 +13,30 @@ def load_variable(module_path):
 
 
 class PolymorphicModelResourceMixin(object):
+    '''
+    # How to create Resource for PolymorphicModel
+    1. Create BaseResource
+    2. Create A Resource of the topmost model and add polymorphic_resource in Meta model
+
+    class BaseMyResource(PolymorphicModelResourceMixin, AnyBaseResource):
+        # ... any resource fields
+
+
+    class MyResource(BaseMyResource):
+        class Meta(BaseMyResource.Meta):
+            queryset = MyModel.objects.all()
+            resource_name = 'myresource'
+            polymorphic_resource = {
+                # ... the submodels....
+                Land: 'doniclub.resources.LandResource',
+                Building: 'doniclub.resources.BuildingResource',
+                Car: 'doniclub.resources.CarResource',
+                Fashion: 'doniclub.resources.FashionResource',
+                PhoneNumber: 'doniclub.resources.PhoneNumberResource'
+            }
+
+    Or... if you don't want to mixin, you can use PolymorphicModelResource
+    '''
     def build_filters(self, filters=None):
         if filters is not None:
             filters = dict_strip_unicode_keys(filters)
@@ -63,5 +87,7 @@ class PolymorphicModelResourceMixin(object):
 
         return resource.dehydrate_resource_uri(bundle)
 
+
 class PolymorphicModelResource(PolymorphicModelResourceMixin, ModelResource):
     pass
+
