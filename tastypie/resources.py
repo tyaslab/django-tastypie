@@ -2167,6 +2167,22 @@ class BaseModelResource(Resource):
             qs_filter = "%s%s%s" % (db_field_name, LOOKUP_SEP, filter_type)
             qs_filters[qs_filter] = value
 
+        # resource_uri_in
+        if 'resource_uri_in' in filters.keys() and filters.get('resource_uri_in'):
+            detail_uris = []
+            for x in filters['resource_uri_in'].split(','):
+                # TODO: :(
+                inserted_id = x.split('/')
+
+                if not inserted_id[-1]:
+                    inserted_id = inserted_id[-2]
+                else:
+                    inserted_id = inserted_id[-1]
+
+                detail_uris.append(inserted_id)
+
+            qs_filters['%s__in' % self._meta.detail_uri_name] = detail_uris
+
         return dict_strip_unicode_keys(qs_filters)
 
     def apply_sorting(self, obj_list, options=None):
