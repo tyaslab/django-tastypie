@@ -698,7 +698,31 @@ class RelatedField(ApiField):
                 if (not callable(self.full_list) and self.full_list) or (callable(self.full_list) and self.full_list(bundle)):
                     should_dehydrate_full_resource = True
 
-        return should_dehydrate_full_resource
+        # get from _full
+        _full = bundle.request.GET.get('_full', '')
+
+        _full = _full.split(',')
+
+        full_indicator = '%s.%s' % (self.resource_name, self.instance_name)
+
+        # TODO: improve it
+        # get resource_name from request
+        resource_name = bundle.request.META.get('PATH_INFO')
+        resource_name = resource_name.split('/')
+        while True:
+            try:
+                resource_name.remove('')
+            except ValueError:
+                break
+
+        # prevent recursion, check if dehydrated resource name is different to the resourc ename
+        if self.api_name:
+            resource_name = resource_name[resource_name.index(self.api_name) + 1]
+            prevent_recursion = self.to_class()._meta.resource_name != resource_name
+        else:
+            prevent_recursion = self.to_class()._meta.resource_name not in resource_name
+
+        return ((full_indicator in _full) or should_dehydrate_full_resource) and prevent_recursion
 
 
 class ToOneField(RelatedField):
