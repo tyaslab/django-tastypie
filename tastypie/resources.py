@@ -1306,6 +1306,20 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
     def is_valid(self, bundle):
         """
         On my way, validation should be performed one by one. And I call it 'validators' not 'validation'
+
+        Dummy Guide for Custom Validation:
+
+        validators = {
+            # your validators goes here...
+        }
+
+
+        self.validate_all(bundle, validators=validators)
+
+        if bundle.errors:
+            raise ImmediateHttpResponse(response=
+                self.error_response(bundle.request, bundle.errors))
+
         """
 
         validators = getattr(self._meta, 'validators', None)
@@ -2184,6 +2198,8 @@ class BaseModelResource(Resource):
                 detail_uris.append(inserted_id)
 
             qs_filters['%s__in' % self._meta.detail_uri_name] = detail_uris
+
+        #TODO: filtering aliases
 
         return dict_strip_unicode_keys(qs_filters)
 
