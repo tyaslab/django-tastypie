@@ -115,12 +115,14 @@ class Paginator(object):
             count = self.get_count()
 
             if limit > 0:
-                max_page = math.ceil(self.get_count() / (self.get_limit() * 1.0))
+                max_page = math.ceil(count / (limit * 1.0))
             else:
                 max_page = 1
             
             if page <= max_page:
-                offset = (page - 1) * self.get_limit()
+                offset = (page - 1) * limit
+            else:
+                offset = count
 
         return offset
 
