@@ -247,23 +247,13 @@ class NumberValidator(RegexValidator):
 
     def __init__(self, **kwargs):
         super(NumberValidator, self).__init__(**kwargs)
-        self.include_negative = kwargs.pop('include_negative', False)
-
-        if self.include_negative:
-            self.pattern = r'^\-[0-9]+$'
-        else:
-            self.pattern = r'^[0-9]+$'
+        self.pattern = r'^(\-|\+)?[0-9]+$'
 
 
 class DecimalValidator(RegexValidator):
     def __init__(self, **kwargs):
         super(DecimalValidator, self).__init__(**kwargs)
-        self.include_negative = kwargs.pop('include_negative', False)
-
-        if self.include_negative:
-            self.pattern = r'^\-[0-9]+\.?[0-9]+$'
-        else:
-            self.pattern = r'^[0-9]+\.?[0-9]+$'
+        self.pattern = r'^(\-|\+)?[0-9]+(\.?[0-9]+)?$'
 
 
 class PhoneNumberValidator(RegexValidator):
