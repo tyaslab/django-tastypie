@@ -9,6 +9,7 @@ from django.utils import six
 from tastypie.bundle import Bundle
 from tastypie.exceptions import ApiFieldError, NotFound
 from tastypie.utils import dict_strip_unicode_keys, make_aware
+from tastypie.utils.timezone import json_to_datetime, datetime_to_json
 
 
 class NOT_PROVIDED:
@@ -17,7 +18,6 @@ class NOT_PROVIDED:
 
 
 DATE_REGEX = re.compile('^(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}).*?$')
-DATETIME_REGEX = re.compile('^(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})(T|\s+)(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2}).*?$')
 
 
 # All the ApiField variants.
@@ -376,13 +376,12 @@ class DateTimeField(ApiField):
             return None
 
         if isinstance(value, six.string_types):
-            match = DATETIME_REGEX.search(value)
-
-            if match:
-                data = match.groupdict()
-                return make_aware(datetime_safe.datetime(int(data['year']), int(data['month']), int(data['day']), int(data['hour']), int(data['minute']), int(data['second'])))
-            else:
+            try:
+                value = json_to_datetime(value)
+            except ValueError:
                 raise ApiFieldError("Datetime provided to '%s' field doesn't appear to be a valid datetime string: '%s'" % (self.instance_name, value))
+        elif isinstance(value, datetime.datetime):
+            value = datetime_to_json(value)
 
         return value
 
