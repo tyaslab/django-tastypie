@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils import six
 from django.utils.encoding import force_text, smart_bytes
+from django.utils.dateformat import format as django_format_datetime
 from django.core.serializers import json as djangojson
 
 from tastypie.bundle import Bundle
@@ -150,7 +151,12 @@ class Serializer(object):
             # Remove microseconds to strictly adhere to iso-8601
             data = data - datetime.timedelta(microseconds = data.microsecond)
 
-        return data.isoformat()
+        if hasattr(data, 'tzinfo'):
+            data = django_format_datetime(data, 'Y-m-d\TH:i:sO')
+        else:
+            data = data.isoformat()
+
+        return data
 
     def format_date(self, data):
         """
