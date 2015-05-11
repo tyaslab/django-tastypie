@@ -310,6 +310,18 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
 
         bundle.errors[resource_name][field].append(message)
 
+    def raise_if_error(self, bundle):
+        if bundle.errors:
+            raise ImmediateHttpResponse(response=
+                self.error_response(bundle.request, bundle.errors))
+
+    def _check_if_return_data(self, request):
+        always_return_data = self._meta.always_return_data
+        ard_from_GET = int(request.GET.get('_return_data', 0))
+        ard_from_GET = ard_from_GET > 0
+
+        return always_return_data or ard_from_GET
+
     def base_urls(self):
         """
         The standard URLs this ``Resource`` should respond to.
@@ -860,7 +872,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
 
         # Dehydrate each field.
         for field_name, field_object in self.fields.items():
-            if _fields and (field_name not in _fields) and ('%s__%s' % (self._meta.resource_name, field_name) not in _fields):
+            if _fields and (field_name not in _fields) and ('%s.%s' % (self._meta.resource_name, field_name) not in _fields):
                 continue
 
             if field_object.writeonly is True:
@@ -1472,7 +1484,8 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         updated_bundle = self.obj_create(bundle, **self.remove_api_resource_names(kwargs))
         location = self.get_resource_uri(updated_bundle)
 
-        if not self._meta.always_return_data:
+        # if not self._meta.always_return_data:
+        if not self._check_if_return_data(request):
             return http.HttpCreated(location=location, detail_uri=getattr(updated_bundle.obj, self._meta.detail_uri_name))
         else:
             updated_bundle = self.full_dehydrate(updated_bundle)
@@ -1525,7 +1538,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
                 self.rollback(bundles_seen)
                 raise
 
-        if not self._meta.always_return_data:
+        if not self._check_if_return_data(request):
             return http.HttpNoContent()
         else:
             to_be_serialized = {}
@@ -1559,7 +1572,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         try:
             updated_bundle = self.obj_update(bundle=bundle, **self.remove_api_resource_names(kwargs))
 
-            if not self._meta.always_return_data:
+            if not self._check_if_return_data(request):
                 return http.HttpNoContent()
             else:
                 # Invalidate prefetched_objects_cache for bundled object
@@ -1572,7 +1585,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
             updated_bundle = self.obj_create(bundle=bundle, **self.remove_api_resource_names(kwargs))
             location = self.get_resource_uri(updated_bundle)
 
-            if not self._meta.always_return_data:
+            if not self._check_if_return_data(request):
                 return http.HttpCreated(location=location, detail_uri=getattr(updated_bundle.obj, self._meta.detail_uri_name))
             else:
                 updated_bundle = self.full_dehydrate(updated_bundle)
@@ -1716,7 +1729,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
                 bundle = self.build_bundle(obj=obj, request=request)
                 self.obj_delete(bundle=bundle)
 
-        if not self._meta.always_return_data:
+        if not self._check_if_return_data(request):
             return http.HttpAccepted()
         else:
             to_be_serialized = {}
@@ -1757,7 +1770,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         deserialized = self.deserialize(request, request.body, format=request.META.get('CONTENT_TYPE', 'application/json'))
         self.update_in_place(request, bundle, deserialized)
 
-        if not self._meta.always_return_data:
+        if not self._check_if_return_data(request):
             return http.HttpAccepted()
         else:
             bundle = self.full_dehydrate(bundle)
