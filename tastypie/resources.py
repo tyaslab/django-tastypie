@@ -1624,7 +1624,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         except NotFound:
             return http.HttpNotFound()
         except ProtectedError:
-            raise ImmediateHttpResponse(response=http.HttpBadRequest())
+            raise ImmediateHttpResponse(response=http.HttpForbidden())
 
     def patch_list(self, request, **kwargs):
         """
