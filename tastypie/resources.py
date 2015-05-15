@@ -12,6 +12,7 @@ from django.core.urlresolvers import NoReverseMatch, reverse, resolve, Resolver4
 from django.core.signals import got_request_exception
 from django.db.models.constants import LOOKUP_SEP
 from django.db.models.sql.constants import QUERY_TERMS
+from django.db.models.deletion import ProtectedError
 from tastypie.fields import RelatedField
 from django.http import HttpResponse, HttpResponseNotFound, Http404
 from django.utils.cache import patch_cache_control, patch_vary_headers
@@ -1622,6 +1623,8 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
             return http.HttpNoContent()
         except NotFound:
             return http.HttpNotFound()
+        except ProtectedError:
+            raise ImmediateHttpResponse(response=http.HttpBadRequest())
 
     def patch_list(self, request, **kwargs):
         """
