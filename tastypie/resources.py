@@ -409,7 +409,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
         deserialized = self._meta.serializer.deserialize(data, format=request.META.get('CONTENT_TYPE', 'application/json'))
         return deserialized
 
-    def alter_list_data_to_serialize(self, request, data, queryset=None):
+    def alter_list_data_to_serialize(self, request, data):
         """
         A hook to alter list data just before it gets serialized & sent to the user.
 
@@ -2287,9 +2287,11 @@ class BaseModelResource(Resource):
         but should make it possible to do more advanced things.
         """
         if queryset is None:
-            object_list = self.get_object_list(request, queryset=queryset).filter(**applicable_filters)
+            object_list = self.get_object_list(request)
         else:
-            object_list = queryset.filter(**applicable_filters)
+            object_list = queryset
+
+        object_list = object_list.filter(**applicable_filters)
 
         # fuzzy filtering
         # Howto: Set fuzzy_querystring and fuzzy_fields in Meta class
