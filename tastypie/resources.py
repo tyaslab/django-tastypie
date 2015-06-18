@@ -2421,7 +2421,12 @@ class BaseModelResource(Resource):
                 # if there is trouble hydrating the data, fall back to just
                 # using kwargs by itself (usually it only contains a "pk" key
                 # and this will work fine.
-                lookup_kwargs = kwargs
+
+                # FIXME: NOQA
+                # lookup_kwargs = kwargs
+                lookup_kwargs = {
+                    bundle.obj._meta.pk.name: kwargs[bundle.obj._meta.pk.name]
+                }
 
             try:
                 bundle.obj = self.obj_get(bundle=bundle, **lookup_kwargs)
