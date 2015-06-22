@@ -1910,6 +1910,7 @@ class BaseModelResource(Resource):
         return urls
 
     def get_m2m_relation(self, request, **kwargs):
+        # FIXME: DEPRECATED!!!
         ## FIXME: Buggy!!!
         m2m_field = kwargs.pop('m2m_field')
         m2m_field = self.fields.get(m2m_field, None)
@@ -1939,7 +1940,7 @@ class BaseModelResource(Resource):
             bundles.append(resource.full_dehydrate(bundle, for_list=True))
 
         to_be_serialized[resource._meta.collection_name] = bundles
-        to_be_serialized = resource.alter_list_data_to_serialize(request, to_be_serialized, queryset=sorted_objects)
+        to_be_serialized = resource.alter_list_data_to_serialize(request, to_be_serialized)
 
         return resource.create_response(request, to_be_serialized)
 
