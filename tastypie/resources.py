@@ -231,7 +231,7 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
             except (BadRequest, fields.ApiFieldError) as e:
                 data = {
                     "error": {
-                        "all": [
+                        "__all__": [
                             sanitize(e.args[0]) if getattr(e, 'args') else ''
                         ]
                     }
