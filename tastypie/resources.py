@@ -229,7 +229,13 @@ class Resource(six.with_metaclass(DeclarativeMetaclass)):
 
                 return response
             except (BadRequest, fields.ApiFieldError) as e:
-                data = {"error": sanitize(e.args[0]) if getattr(e, 'args') else ''}
+                data = {
+                    "error": {
+                        "all": [
+                            sanitize(e.args[0]) if getattr(e, 'args') else ''
+                        ]
+                    }
+                }
                 return self.error_response(request, data, response_class=http.HttpBadRequest)
             except ValidationError as e:
                 data = {"error": sanitize(e.messages)}

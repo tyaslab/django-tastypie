@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 import datetime
 from dateutil.parser import parse
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import re
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.utils import datetime_safe, importlib
@@ -280,7 +280,10 @@ class DecimalField(ApiField):
         value = super(DecimalField, self).hydrate(bundle)
 
         if value and not isinstance(value, Decimal):
-            value = Decimal(value)
+            try:
+                value = Decimal(value)
+            except InvalidOperation:
+                raise ApiFieldError("Data provided to '%s' field doesn't appear to be a valid decimal: '%s'" % (self.instance_name, value))
 
         return value
 
